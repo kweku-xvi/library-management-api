@@ -1,5 +1,6 @@
 from .models import Book, CheckoutBook
 from .serializers import BookSerializer
+from .utils import send_checkout_book_email
 from accounts.permissions import IsVerified
 from django.db.models import Q
 from django.shortcuts import render
@@ -189,10 +190,19 @@ def checkout_books_view(request, isbn:str): # borrow a book
         book = get_book(isbn=isbn)
         user = request.user
 
+        if CheckoutBook.objects.filter(user=user, book=book).exists():
+            return Response(
+                {
+                    'success':False,
+                    'message':'You have already borrowed this book!'
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
+
         checkout = CheckoutBook.objects.create(
             book=book,
             user=user
         )
+        send_checkout_book_email(email=user.email, username=user.username, book=book.title, borrow_date=str(checkout.borrow_date.date()), due_date=str(checkout.due_date.date()))
 
         return Response(
             {
