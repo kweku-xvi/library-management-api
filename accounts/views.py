@@ -285,30 +285,6 @@ def get_all_users_view(request):
         )
 
 
-# @api_view(['GET'])
-# @permission_classes([IsVerified])
-# def get_user_details_view(request, user_id):
-#     if request.method == 'GET':
-#         if request.user.role != 'Librarian':
-#             return Response(
-#                 {
-#                     'success':False,
-#                     'message':'You do not have the permission to perform this action!'
-#                 }, status=status.HTTP_403_FORBIDDEN
-#             )
-
-#         user = User.objects.get(id=user_id)
-
-#         serializer = UserInfoSerializer(user)
-
-#         return Response(
-#             {
-#                 'success':True,
-#                 'user':serializer.data
-#             }, status=status.HTTP_200_OK
-#         )
-
-
 @api_view(['GET'])
 @permission_classes([IsVerified])
 def search_user_view(request):
