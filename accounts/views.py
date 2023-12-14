@@ -20,19 +20,6 @@ from rest_framework.response import Response
 
 load_dotenv()
 
-# def get_user(user_id):
-#     try:
-#         user = User.objects.get(id=user_id)
-#         return user
-#     except User.DoesNotExist:
-#         return Response(
-#             {
-#                 'success':False,
-#                 'message':'User does not exist'
-#             }, status=status.HTTP_400_BAD_REQUEST
-#         )
-
-
 @api_view(['POST'])
 def user_signup_view(request):
     if request.method == 'POST':
