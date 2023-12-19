@@ -1,5 +1,5 @@
-from .models import Book, CheckoutBook
-from .serializers import BookSerializer
+from .models import Book, CheckoutBook, ReserveBook
+from .serializers import BookSerializer, ReservesSerializer, CheckoutSerializer
 from .utils import send_checkout_book_email
 from accounts.permissions import IsVerified
 from django.db.models import Q
@@ -21,6 +21,20 @@ def get_book(isbn:str):
             }, status=status.HTTP_400_BAD_REQUEST
         )
     return book
+
+
+def get_reservation(id:str):
+    try:
+        reservation = ReserveBook.objects.get(reservation_id=id)
+    except ReserveBook.DoesNotExist:
+        return Response(
+            {
+                'success':False,
+                'message':'Reservation does not exist!'
+            }, status=status.HTTP_400_BAD_REQUEST
+        )
+    return reservation
+
 
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
@@ -210,3 +224,113 @@ def checkout_books_view(request, isbn:str): # borrow a book
                 'message':f"The book '{book.title}' has been successfully checked out. Pick it up at the reception on your way out."
             }, status=status.HTTP_201_CREATED
         )
+
+
+@api_view(['GET'])
+@permission_classes([IsVerified])
+def get_books_borrowed_by_user_view(request):
+    if request.method == 'GET':
+        user = request.user
+
+        if CheckoutBook.objects.filter(user=user).count() == 0:
+            return Response(
+                {
+                    'success':True,
+                    'message':'You have borrowed no books!'
+                }, status=status.HTTP_200_OK
+            )
+
+        books = CheckoutBook.objects.filter(user=user)
+        serializer = CheckoutSerializer(books, many=True)
+
+        return Response(
+            {
+                'success':True,
+                'books':serializer.data
+            }, status=status.HTTP_200_OK
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsVerified])
+def reserve_book_view(request, isbn:str):
+    if request.method == 'POST':
+        user = request.user
+        book = get_book(isbn=isbn)
+
+        if book.available != 'Unavailable':
+            return Response(
+                {
+                    'success':False,
+                    'message':'This book is available'
+                }, status=status.HTTP_403_FORBIDDEN
+            )
+
+        if ReserveBook.objects.filter(user=user, book=book).exists():
+            return Response(
+                {
+                    'success':True,
+                    'message':'This book is already in your reservations!'
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        reservation = ReserveBook.objects.create(book=book, user=user)
+
+        return Response(
+            {
+                'success':True,
+                'message':'This book has been added to your reservations. Check later to see if it is available'
+            }, status=status.HTTP_200_OK
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsVerified])
+def get_all_reserved_books_view(request):
+    if request.method == 'GET':
+        user = request.user
+
+        if ReserveBook.objects.filter(user=user).count() == 0:
+            return Response(
+                {
+                    'success':True,
+                    'message':'You have no books in your reservations!'
+                }, status=status.HTTP_200_OK
+            )
+        
+        reverses = ReserveBook.objects.filter(user=user)
+        serializer = ReservesSerializer(reverses, many=True)
+
+        return Response(
+            {
+                'success':True,
+                'reserves':serializer.data
+            }, status=status.HTTP_200_OK
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsVerified])
+def remove_book_from_reservations_view(request, id:str):
+    if request.method == 'DELETE':
+        user = request.user
+        reservation = get_reservation(id=id)
+
+        if user != reservation.user and user.is_staff != True:
+            return Response(
+                {
+                    'success':False,
+                    'message':'You do not have the permission to perform this action!'
+                }, status=status.HTTP_403_FORBIDDEN
+            )
+        
+        reservation.delete()
+
+        return Response(
+            {
+                'success':True,
+                'message':'The reservation has been successfully deleted!'
+            },status=status.HTTP_204_NO_CONTENT
+        )
+
+
