@@ -226,7 +226,16 @@ def password_reset_confirm_view(request):
 def update_user_info_view(request, user_id):
     if request.method == 'PUT' or request.method == 'PATCH':
         logged_in_user = request.user
-        user = get_user(user_id=user_id)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {
+                    'success':False,
+                    'message':'User does not exist'
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if logged_in_user != user and not logged_in_user.is_staff:
             return Response(
